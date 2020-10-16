@@ -15,8 +15,7 @@ contract =  Let (ValueId 1) (Constant 0)
 
 {- this is the main loop of the game, this is called recursively until everyone wins -}
 gameLoop :: Integer -> Contract
-gameLoop slots = If (AndObs (AndObs (ValueEQ (UseValue (ValueId 0)) (Constant 1)) (ValueEQ (UseValue (ValueId 1)) (Constant 1))) (ValueEQ (UseValue (ValueId 3)) (Constant 1)))
-                    (When [Case kevinDepositAction 
+gameLoop slots =    When [Case kevinDepositAction 
                         (When [Case mikeDepositAction 
                             (When [Case arjunDepositAction (afterDepositing slots)] 
                                 (depositTimeOut slots)
@@ -24,7 +23,6 @@ gameLoop slots = If (AndObs (AndObs (ValueEQ (UseValue (ValueId 0)) (Constant 1)
                         (depositTimeOut slots)
                         Refund)] 
                     (depositTimeOut slots)
-                    Refund)
                     Refund
 
 {- the deposit time is chosen to be 10 slots, all 
@@ -91,25 +89,28 @@ claimRewards slots =    If (winObservation 0 0 0)
                         (Refund)))))))
 
 winObservation :: Integer -> Integer-> Integer -> Observation
-winObservation k m a = (AndObs (AndObs (ValueEQ (UseValue (ValueId k)) (Constant 0)) (ValueEQ (UseValue (ValueId m)) (Constant 0))) (ValueEQ (UseValue (ValueId a)) (Constant 0)))
+winObservation k m a = (AndObs (AndObs (ValueEQ (UseValue (ValueId 1)) (Constant k)) (ValueEQ (UseValue (ValueId 2)) (Constant m))) (ValueEQ (UseValue (ValueId 3)) (Constant a)))
 
 choosingPeriod :: Integer -> Slot
 choosingPeriod slots = Slot (slots + 100)
 
 {- kevin gets paid -}
 kevinWon :: Integer -> Contract
-kevinWon slots = Pay "mike" (Party "kevin") depositAmount 
-                    (Pay "arjun" (Party "kevin") depositAmount Refund)
+kevinWon slots =Pay "kevin" (Party "kevin") depositAmount  
+                    (Pay "mike" (Party "kevin") depositAmount 
+                        (Pay "arjun" (Party "kevin") depositAmount Refund))
 
 {- mike gets paid -}
 mikeWon :: Integer -> Contract
-mikeWon slots = Pay "kevin" (Party "mike") depositAmount 
-                    (Pay "arjun" (Party "mike") depositAmount Refund)
+mikeWon slots = Pay "mike" (Party "mike") depositAmount
+                    (Pay "kevin" (Party "mike") depositAmount 
+                        (Pay "arjun" (Party "mike") depositAmount Refund))
 
 {- arjun gets paid -}
 arjunWon :: Integer -> Contract
-arjunWon slots = Pay "kevin" (Party "arjun") depositAmount 
-                    (Pay "mike" (Party "arjun") depositAmount Refund)
+arjunWon slots =Pay "arjun" (Party "arjun") depositAmount 
+                    (Pay "kevin" (Party "arjun") depositAmount 
+                        (Pay "mike" (Party "arjun") depositAmount Refund))
 
 {- magic number choices made by participants -}
 kevinChoice, mikeChoice, arjunChoice :: Action
