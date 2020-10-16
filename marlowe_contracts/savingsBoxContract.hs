@@ -98,19 +98,26 @@ choosingPeriod slots = Slot (slots + 100)
 kevinWon :: Integer -> Contract
 kevinWon slots =Pay "kevin" (Party "kevin") depositAmount  
                     (Pay "mike" (Party "kevin") depositAmount 
-                        (Pay "arjun" (Party "kevin") depositAmount Refund))
+                        (Pay "arjun" (Party "kevin") depositAmount 
+                            (setWinState 1)))
 
 {- mike gets paid -}
 mikeWon :: Integer -> Contract
 mikeWon slots = Pay "mike" (Party "mike") depositAmount
                     (Pay "kevin" (Party "mike") depositAmount 
-                        (Pay "arjun" (Party "mike") depositAmount Refund))
+                        (Pay "arjun" (Party "mike") depositAmount
+                            (setWinState 2)))
 
 {- arjun gets paid -}
 arjunWon :: Integer -> Contract
 arjunWon slots =Pay "arjun" (Party "arjun") depositAmount 
                     (Pay "kevin" (Party "arjun") depositAmount 
-                        (Pay "mike" (Party "arjun") depositAmount Refund))
+                        (Pay "mike" (Party "arjun") depositAmount 
+                            (setWinState 3)))
+
+{- set player win state-}
+setWinState :: Integer -> Contract
+setWinState code = (Let (ValueId code) (Constant 1) Refund)
 
 {- magic number choices made by participants -}
 kevinChoice, mikeChoice, arjunChoice :: Action
