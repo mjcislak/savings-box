@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Escrow where
+module SavingsBox where
 
 import Language.Marlowe
 
@@ -7,11 +7,10 @@ main :: IO ()
 main = print . pretty $ contract
 
 contract :: Contract
-contract =  Let (ValueId 1) (Constant 0) 
-                (Let (ValueId 2) (Constant 0) 
-                    (Let (ValueId 3) (Constant 0) 
-                        (Let (ValueId 4) (Constant 0)
-                            (gameLoop 0))))
+contract =  Let (ValueId "kevin-won") (Constant 0) 
+                (Let (ValueId "mike-won") (Constant 0) 
+                    (Let (ValueId "arjun-won") (Constant 0) 
+                        (gameLoop 0)))
 
 {- this is the main loop of the game, this is called recursively until everyone wins -}
 gameLoop :: Integer -> Contract
@@ -19,11 +18,11 @@ gameLoop slots =    When [Case kevinDepositAction
                         (When [Case mikeDepositAction 
                             (When [Case arjunDepositAction (afterDepositing slots)] 
                                 (depositTimeOut slots)
-                                Refund)] 
+                                Close)] 
                         (depositTimeOut slots)
-                        Refund)] 
+                        Close)] 
                     (depositTimeOut slots)
-                    Refund
+                    Close
 
 {- the deposit time is chosen to be 10 slots, all 
 players must deposit before this slot at the begining of each game -}
@@ -32,9 +31,9 @@ depositTimeOut slots = Slot (slots + 10)
 
 {- deposit made by each player -}
 kevinDepositAction, mikeDepositAction, arjunDepositAction :: Action
-kevinDepositAction = Deposit "kevin" "kevin" depositAmount
-mikeDepositAction = Deposit "mike" "mike" depositAmount
-arjunDepositAction = Deposit "arjun" "arjun" depositAmount
+kevinDepositAction = Deposit "kevin" "kevin" ada depositAmount
+mikeDepositAction = Deposit "mike" "mike" ada depositAmount
+arjunDepositAction = Deposit "arjun" "arjun" ada depositAmount
 
 {- wait for certain amount of slots before drawing the winners -}
 afterDepositing :: Integer -> Contract
@@ -51,73 +50,73 @@ claimRewards slots =    If (winObservation 0 0 0)
                                 Case mikeChoice (mikeWon slots), 
                                 Case arjunChoice (arjunWon slots)] 
                                 (choosingPeriod slots)
-                                Refund)
+                                Close)
                         (If (winObservation 1 0 0)
                              (When [
                                 Case mikeChoice (mikeWon slots), 
                                 Case arjunChoice (arjunWon slots)] 
                                 (choosingPeriod slots)
-                                Refund)
+                                Close)
                         (If (winObservation 0 1 0)
                              (When [
                                 Case kevinChoice (kevinWon slots), 
                                 Case arjunChoice (arjunWon slots)] 
                                 (choosingPeriod slots) 
-                                Refund)
+                                Close)
                         (If (winObservation 0 0 1)
                             (When [
                                 Case kevinChoice (kevinWon slots), 
                                 Case mikeChoice (mikeWon slots)] 
                                 (choosingPeriod slots) 
-                                Refund)
+                                Close)
                         (If (winObservation 1 1 0)
                             (When [
                                 Case arjunChoice (arjunWon slots)] 
                                 (choosingPeriod slots) 
-                                Refund)
+                                Close)
                         (If (winObservation 0 1 1)
                             (When [
                                 Case mikeChoice (mikeWon slots), 
                                 Case arjunChoice (arjunWon slots)] 
                                 (choosingPeriod slots)
-                                Refund)
+                                Close)
                         (If (winObservation 1 0 1)
                             (When [
                                 Case mikeChoice (mikeWon slots)] 
                                 (choosingPeriod slots) 
-                                Refund)
-                        (Refund)))))))
+                                Close)
+                        (Close)))))))
 
 winObservation :: Integer -> Integer-> Integer -> Observation
-winObservation k m a = (AndObs (AndObs (ValueEQ (UseValue (ValueId 1)) (Constant k)) (ValueEQ (UseValue (ValueId 2)) (Constant m))) (ValueEQ (UseValue (ValueId 3)) (Constant a)))
+winObservation k m a = (AndObs 
+                            (AndObs 
+                                (ValueEQ (UseValue (ValueId "kevin-won")) (Constant k)) 
+                                (ValueEQ (UseValue (ValueId "mike-won")) (Constant m))) 
+                            (ValueEQ (UseValue (ValueId "arjun-won")) (Constant a)))
 
 choosingPeriod :: Integer -> Slot
 choosingPeriod slots = Slot (slots + 100)
 
 {- kevin gets paid -}
 kevinWon :: Integer -> Contract
-kevinWon slots =Pay "kevin" (Party "kevin") depositAmount  
-                    (Pay "mike" (Party "kevin") depositAmount 
-                        (Pay "arjun" (Party "kevin") depositAmount 
-                            (setWinState 1)))
+kevinWon slots =Pay "kevin" (Party "kevin") ada depositAmount  
+                    (Pay "mike" (Party "kevin") ada depositAmount 
+                        (Pay "arjun" (Party "kevin") ada depositAmount 
+                            ((Let (ValueId "kevin-won") (Constant 1) Close))))
 
 {- mike gets paid -}
 mikeWon :: Integer -> Contract
-mikeWon slots = Pay "mike" (Party "mike") depositAmount
-                    (Pay "kevin" (Party "mike") depositAmount 
-                        (Pay "arjun" (Party "mike") depositAmount
-                            (setWinState 2)))
+mikeWon slots = Pay "mike" (Party "mike") ada depositAmount
+                    (Pay "kevin" (Party "mike") ada depositAmount 
+                        (Pay "arjun" (Party "mike") ada depositAmount
+                            ((Let (ValueId "mike-won") (Constant 1) Close))))
 
 {- arjun gets paid -}
 arjunWon :: Integer -> Contract
-arjunWon slots =Pay "arjun" (Party "arjun") depositAmount 
-                    (Pay "kevin" (Party "arjun") depositAmount 
-                        (Pay "mike" (Party "arjun") depositAmount 
-                            (setWinState 3)))
-
-{- set player win state-}
-setWinState :: Integer -> Contract
-setWinState code = (Let (ValueId code) (Constant 1) Refund)
+arjunWon slots =Pay "arjun" (Party "arjun") ada depositAmount 
+                    (Pay "kevin" (Party "arjun") ada depositAmount 
+                        (Pay "mike" (Party "arjun") ada depositAmount 
+                            ((Let (ValueId "arjun-won") (Constant 1) Close))))
 
 {- magic number choices made by participants -}
 kevinChoice, mikeChoice, arjunChoice :: Action
@@ -141,6 +140,5 @@ magicNumber = 1
 
 {- this is amount players of the kitty party have to deposit
    for being eligible to play -}
-depositAmount :: Value
+depositAmount :: (Value Observation)
 depositAmount = Constant 100
-
